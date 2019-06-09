@@ -1,0 +1,28 @@
+# Simple usage with a mounted data directory:
+# > docker build -t fcion .
+# > docker run -it -p 8545:8545 -p 8546:8546 -p 6060:6060 fcion 
+FROM golang:alpine AS build-env
+
+# Set up dependencies
+ENV PACKAGES curl make git libc-dev bash gcc linux-headers eudev-dev python
+
+# Set working directory for the build
+WORKDIR /go/src/github.com/fractalplatform/fractal
+
+# install minimum necessary dependencies, Get source files, build Project, remove packages
+RUN apk add --no-cache $PACKAGES && \
+    git clone https://github.com/fractalplatform/fractal.git . && \
+    make all
+
+# Final image
+FROM alpine:edge
+
+RUN mkdir -p /root/fractal
+
+# Copy over binaries from the build-env
+COPY --from=build-env /go/src/github.com/fractalplatform/fractal/build /root/fractal/build
+
+WORKDIR  /root/fractal
+
+# Run testnet by default
+CMD ["./build/bin/ft","--genesis=./build/testnet.json"]
